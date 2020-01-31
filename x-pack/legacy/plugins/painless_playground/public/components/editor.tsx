@@ -21,6 +21,7 @@ export function Editor({ code, setCode, renderMainControls }: Props) {
         <EuiPageContent panelPaddingSize="s">
           <CodeEditor
             languageId="painless"
+            theme="painless"
             height={380}
             value={code}
             onChange={setCode}

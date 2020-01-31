@@ -5,178 +5,62 @@
  */
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { PainlessTokensProvider } from './../antlr/PainlessTokensProvider';
+import { validate } from './../antlr/ParserFacade';
+
 export const LANGUAGE_ID = 'painless';
 
-/**
- * Extends the default type for a Monarch language so we can use
- * attribute references (like @keywords to reference the keywords list)
- * in the defined tokenizer
- */
-interface Language extends monaco.languages.IMonarchLanguage {
-  default: string;
-  brackets: any;
-  keywords: string[];
-  symbols: RegExp;
-  escapes: RegExp;
-  digits: RegExp;
-  primitives: string[];
-  octaldigits: RegExp;
-  binarydigits: RegExp;
-  constants: string[];
-  operators: string[];
-}
+// TODO: derive a light and dark theme from EUI light and dark editor themes, inherit their rules,
+// defining additional ones not covered. The token names come from
+// PainlessLexer.g4, lowercased and suffixed with .painless for more specificity
+class PainlessTheme implements monaco.editor.IStandaloneThemeData {
+  base: monaco.editor.BuiltinTheme;
+  inherit: boolean;
+  rules: monaco.editor.ITokenThemeRule[];
+  encodedTokensColors?: string[] | undefined;
+  colors: monaco.editor.IColors;
 
-function getPainlessLanguage() {
-  return {
-    default: '',
-    // painless does not use < >, so we define our own
-    brackets: [
-      ['{', '}', 'delimiter.curly'],
-      ['[', ']', 'delimiter.square'],
-      ['(', ')', 'delimiter.parenthesis'],
-    ],
-    keywords: [
-      'if',
-      'in',
-      'else',
-      'while',
-      'do',
-      'for',
-      'continue',
-      'break',
-      'return',
-      'new',
-      'try',
-      'catch',
-      'throw',
-      'this',
-      'instanceof',
-    ],
-    primitives: ['void', 'boolean', 'byte', 'short', 'char', 'int', 'long', 'float', 'double'],
-    constants: ['true', 'false'],
-    operators: [
-      '=',
-      '>',
-      '<',
-      '!',
-      '~',
-      '?',
-      '?:',
-      '?.',
-      ':',
-      '==',
-      '===',
-      '<=',
-      '>=',
-      '!=',
-      '!==',
-      '&&',
-      '||',
-      '++',
-      '--',
-      '+',
-      '-',
-      '*',
-      '/',
-      '&',
-      '|',
-      '^',
-      '%',
-      '<<',
-      '>>',
-      '>>>',
-      '+=',
-      '-=',
-      '*=',
-      '/=',
-      '&=',
-      '|=',
-      '^=',
-      '%=',
-      '<<=',
-      '>>=',
-      '>>>=',
-      '->',
-      '::',
-      '=~',
-      '==~',
-    ],
-    symbols: /[=><!~?:&|+\-*\/^%]+/,
-    escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-    digits: /\d+(_+\d+)*/,
-    octaldigits: /[0-7]+(_+[0-7]+)*/,
-    binarydigits: /[0-1]+(_+[0-1]+)*/,
-    hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
-    tokenizer: {
-      root: [
-        // identifiers and keywords
-        [
-          /[a-zA-Z_][\w]*/,
-          {
-            cases: {
-              '@keywords': 'keyword',
-              '@primitives': 'type',
-              '@constants': 'constant',
-              '@default': 'identifier',
-            },
-          },
-        ],
-        // whitespace
-        [/[ \t\r\n]+/, '@whitespace'],
-        // comments
-        // [/\/\*/, 'comment', '@comment'],
-        [/\/\/.*$/, 'comment'],
-        // brackets
-        [/[{}()\[\]]/, '@brackets'],
-        // operators
-        [
-          /@symbols/,
-          {
-            cases: {
-              '@operators': 'operators',
-              '@default': '',
-            },
-          },
-        ],
-        // numbers
-        [/(@digits)[eE]([\-+]?(@digits))?[fFdD]?/, 'number.float'],
-        [/(@digits)\.(@digits)([eE][\-+]?(@digits))?[fFdD]?/, 'number.float'],
-        [/0[xX](@hexdigits)[Ll]?/, 'number.hex'],
-        [/0(@octaldigits)[Ll]?/, 'number.octal'],
-        [/0[bB](@binarydigits)[Ll]?/, 'number.binary'],
-        [/(@digits)[fFdD]/, 'number.float'],
-        [/(@digits)[lL]?/, 'number'],
-        // delimiter: after numbers due to conflict with decimals and dot
-        [/[;,.]/, 'delimiter'],
-        // strings double quoted
-        [/"([^"\\]|\\.)*$/, 'string.invalid'], // string without termination
-        [/"/, 'string', '@string_dq'],
-        // strings single quoted
-        [/'([^'\\]|\\.)*$/, 'string.invalid'], // string without termination
-        [/'/, 'string', '@string_sq'],
-      ],
-      comment: [
-        [/[^\/*]+/, 'comment'],
-        [/\*\//, 'comment', '@pop'],
-        [/[\/*]/, 'comment'],
-      ],
-      string_dq: [
-        [/[^\\"]+/, 'string'],
-        [/@escapes/, 'string.escape'],
-        [/\\./, 'string.escape.invalid'],
-        [/"/, 'string', '@pop'],
-      ],
-      string_sq: [
-        [/[^\\']+/, 'string'],
-        [/@escapes/, 'string.escape'],
-        [/\\./, 'string.escape.invalid'],
-        [/'/, 'string', '@pop'],
-      ],
-    },
-  } as Language;
+  constructor() {
+    this.base = 'vs';
+    this.inherit = true;
+    this.rules = [
+      { token: 'integer.painless', foreground: 'E12884' },
+      { token: 'decimal.painless', foreground: 'E12884' },
+      { token: 'return.painless', foreground: '006bb4' },
+      { token: 'instanceof.painless', foreground: '006bb4' },
+      { token: 'new.painless', foreground: '006bb4' },
+      { token: 'for.painless', foreground: '006bb4' },
+      { token: 'type.painless', foreground: '54b399' },
+      { token: 'regex.painless', foreground: 'E12884' },
+      { token: 'true.painless', foreground: 'E12884' },
+      { token: 'false.painless', foreground: 'E12884' },
+      { token: 'null.painless', foreground: 'E12884' },
+      { token: 'string.painless', foreground: 'bd271e' },
+      { token: 'comment.painless', foreground: '98a2b3' },
+    ];
+    this.colors = {};
+  }
 }
 
 export function registerPainless() {
   monaco.languages.register({ id: LANGUAGE_ID });
-  monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, getPainlessLanguage());
+  monaco.languages.setTokensProvider(LANGUAGE_ID, new PainlessTokensProvider());
+  monaco.editor.defineTheme(LANGUAGE_ID, new PainlessTheme());
+}
+
+export function highlightSyntaxErrors(input: string) {
+  const syntaxErrors = validate(input);
+  const monacoErrors: monaco.editor.IMarkerData[] = [];
+  for (const e of syntaxErrors) {
+    monacoErrors.push({
+      startLineNumber: e.startLine,
+      startColumn: e.startCol,
+      endLineNumber: e.endLine,
+      endColumn: e.endCol,
+      message: e.message,
+      severity: monaco.MarkerSeverity.Error,
+    });
+  }
+  const model = monaco.editor.getModels()[0];
+  monaco.editor.setModelMarkers(model, 'owner', monacoErrors);
 }

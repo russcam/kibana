@@ -44,6 +44,9 @@ export interface Props {
   /** ID of the editor language */
   languageId: string;
 
+  /** theme of the editor language. Defaults to euiColors */
+  theme: string;
+
   /** Value of the editor */
   value: string;
 
@@ -162,12 +165,12 @@ export class CodeEditor extends React.Component<Props, {}> {
   };
 
   render() {
-    const { languageId, value, onChange, width, height, options } = this.props;
+    const { languageId, theme, value, onChange, width, height, options } = this.props;
 
     return (
       <React.Fragment>
         <MonacoEditor
-          theme="euiColors"
+          theme={theme || 'euiColors'}
           language={languageId}
           value={value}
           onChange={onChange}

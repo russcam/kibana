@@ -21,6 +21,7 @@ import { Output } from './output';
 import { MainControls } from './main_controls';
 import { Settings } from './settings';
 import { Editor } from './editor';
+import { highlightSyntaxErrors } from './../register_painless';
 
 export function PainlessPlayground({
   executeCode,
@@ -30,6 +31,12 @@ export function PainlessPlayground({
   const [code, setCode] = useState(
     getFromLocalStorage('painlessPlaygroundCode', 'return "Hello painless world!"')
   );
+
+  const setCodeAndHighlightErrors = (input: string) => {
+    setCode(input);
+    highlightSyntaxErrors(input);
+  };
+
   const [response, setResponse] = useState<Response>({});
   const [context, setContext] = useState(
     getFromLocalStorage('painlessPlaygroundContext', 'painless_test_without_params')
@@ -94,7 +101,11 @@ export function PainlessPlayground({
                 id: 'input',
                 name: 'Code',
                 content: (
-                  <Editor code={code} setCode={setCode} renderMainControls={renderMainControls} />
+                  <Editor
+                    code={code}
+                    setCode={setCodeAndHighlightErrors}
+                    renderMainControls={renderMainControls}
+                  />
                 ),
               },
               {
