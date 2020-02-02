@@ -7,8 +7,8 @@
 // based on work licensed under Apache 2.0: https://github.com/Strumenta/calc-monaco-editor/blob/master/LICENSE
 /* eslint-disable max-classes-per-file */
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { error } from 'antlr4/index';
-import { PainlessLexer } from './PainlessLexer'
+import { ANTLRErrorListener, Token, Recognizer, RecognitionException } from 'antlr4ts';
+import { PainlessLexer } from './PainlessLexer';
 import { createLexer } from './ParserFacade';
 
 export class PainlessState implements monaco.languages.IState {
@@ -49,9 +49,16 @@ class PainlessLineTokens implements monaco.languages.ILineTokens {
 
 export function tokensForLine(input: string): monaco.languages.ILineTokens {
   const errorStartingPoints: number[] = [];
-  class ErrorCollectorListener extends error.ErrorListener {
-    syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
-      errorStartingPoints.push(column);
+  class ErrorCollectorListener implements ANTLRErrorListener<Token> {
+    syntaxError<T>(
+      _recognizer: Recognizer<T, any>,
+      _offendingSymbol: T | undefined,
+      _line: number,
+      charPositionInLine: number,
+      _msg: string,
+      _e: RecognitionException | undefined
+    ) {
+      errorStartingPoints.push(charPositionInLine);
     }
   }
 
@@ -70,8 +77,9 @@ export function tokensForLine(input: string): monaco.languages.ILineTokens {
       if (token.type === PainlessLexer.EOF) {
         done = true;
       } else {
-        const tokenTypeName = lexer.symbolicNames[token.type];
-        const painlessToken = new PainlessToken(tokenTypeName, token.column);
+        const tokenTypeName = lexer.ruleNames[token.type - 1];
+        console.log(tokenTypeName);
+        const painlessToken = new PainlessToken(tokenTypeName, token.charPositionInLine);
         painlessTokens.push(painlessToken);
       }
     }

@@ -72,7 +72,8 @@
     "spec_to_console": "node scripts/spec_to_console",
     "backport-skip-ci": "backport --prDescription \"[skip-ci]\"",
     "storybook": "node scripts/storybook",
-    "cover:report": "nyc report --temp-dir target/kibana-coverage/functional --report-dir target/coverage/report --reporter=lcov && open ./target/coverage/report/lcov-report/index.html"
+    "cover:report": "nyc report --temp-dir target/kibana-coverage/functional --report-dir target/coverage/report --reporter=lcov && open ./target/coverage/report/lcov-report/index.html",
+    "antlr4ts": "antlr4ts ../elasticsearch/modules/lang-painless/src/main/antlr/PainlessLexer.g4 -o x-pack/legacy/plugins/painless_playground/antlr && antlr4ts ../elasticsearch/modules/lang-painless/src/main/antlr/PainlessParser.g4 -no-listener -no-visitor -o x-pack/legacy/plugins/painless_playground/antlr"
   },
   "repository": {
     "type": "git",
@@ -153,6 +154,7 @@
     "angular-sanitize": "^1.7.8",
     "angular-sortable-view": "^0.0.17",
     "antlr4": "^4.7.2",
+    "antlr4ts": "^0.5.0-alpha.3",
     "autoprefixer": "9.6.1",
     "babel-loader": "^8.0.6",
     "bluebird": "3.5.5",
@@ -382,6 +384,7 @@
     "@typescript-eslint/eslint-plugin": "^2.15.0",
     "@typescript-eslint/parser": "^2.15.0",
     "angular-mocks": "^1.7.8",
+    "antlr4ts-cli": "^0.5.0-alpha.3",
     "archiver": "^3.1.1",
     "axe-core": "^3.3.2",
     "babel-eslint": "^10.0.3",

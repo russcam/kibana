@@ -7,13 +7,28 @@
 // based on work licensed under Apache 2.0: https://github.com/Strumenta/calc-monaco-editor/blob/master/LICENSE
 /* eslint-disable max-classes-per-file */
 
-import { CommonTokenStream, InputStream, Token, error, Parser } from 'antlr4/index';
-import { DefaultErrorStrategy } from 'antlr4/error/ErrorStrategy.js'
+import {
+  ANTLRInputStream,
+  CommonTokenStream,
+  Token,
+  Parser,
+  ANTLRErrorListener,
+  DefaultErrorStrategy,
+  Recognizer,
+  RecognitionException,
+} from 'antlr4ts';
 import { PainlessLexer } from './PainlessLexer';
 import { PainlessParser } from './PainlessParser';
 
-class ConsoleErrorListener extends error.ErrorListener {
-  syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
+class ConsoleErrorListener implements ANTLRErrorListener<Token> {
+  syntaxError(
+    _recognizer: Recognizer<Token, any>,
+    _offendingSymbol: Token | undefined,
+    _line: number,
+    _charPositionInLine: number,
+    msg: string,
+    _e: RecognitionException | undefined
+  ) {
     console.log(`ERROR ${msg}`);
   }
 }
@@ -40,32 +55,37 @@ export class Error {
   }
 }
 
-class CollectorErrorListener extends error.ErrorListener {
+class CollectorErrorListener implements ANTLRErrorListener<Token> {
   private errors: Error[] = [];
 
   constructor(errors: Error[]) {
-    super();
     this.errors = errors;
   }
 
-  syntaxError(recognizer, offendingSymbol, line, column, msg, e) {
-    let endColumn = column + 1;
-    if (offendingSymbol._text !== null) {
-      endColumn = column + offendingSymbol._text.length;
+  syntaxError(
+    _recognizer: Recognizer<Token, any>,
+    offendingSymbol: Token | undefined,
+    line: number,
+    charPositionInLine: number,
+    msg: string,
+    _e: RecognitionException | undefined
+  ) {
+    let endColumn = charPositionInLine + 1;
+    if (offendingSymbol?.text !== null) {
+      endColumn = charPositionInLine + offendingSymbol.text.length;
     }
-    this.errors.push(new Error(line, line, column, endColumn, msg));
+    this.errors.push(new Error(line, line, charPositionInLine, endColumn, msg));
   }
 }
 
 export function createLexer(input: string) {
-  const chars = new InputStream(input);
-  const lexer = new PainlessLexer(chars);
-  lexer.strictMode = false;
+  const inputStream = new ANTLRInputStream(input);
+  const lexer = new PainlessLexer(inputStream);
   return lexer;
 }
 
 export function getTokens(input: string) : Token[] {
-  return createLexer(input).getAllTokens()
+  return createLexer(input).getAllTokens();
 }
 
 function createParserFromLexer(lexer: PainlessLexer) {
@@ -90,8 +110,7 @@ class PainlessErrorStrategy extends DefaultErrorStrategy {
   }
 
   singleTokenDeletion(recognizer: Parser) {
-    const nextTokenType = recognizer.getTokenStream().LA(2);
-
+    const nextTokenType = recognizer.inputStream.LA(2);
     // TODO: Would need to send newline tokens to stream
     // if (recognizer.getTokenStream().LA(1) === PainlessLexer.WS) {
     //   return null;
@@ -101,21 +120,21 @@ class PainlessErrorStrategy extends DefaultErrorStrategy {
       this.reportUnwantedToken(recognizer);
       recognizer.consume(); // simply delete extra token
       // we want to return the token we're actually matching
-      const matchedSymbol = recognizer.getCurrentToken();
+      const matchedSymbol = recognizer.currentToken;
       this.reportMatch(recognizer); // we know current token is correct
       return matchedSymbol;
     } else {
-      return null;
+      return undefined;
     }
   }
 
-  getExpectedTokens = function(recognizer) {
+  getExpectedTokens(recognizer: Parser) {
     return recognizer.getExpectedTokens();
-  };
+  }
 
-  reportMatch = function(recognizer) {
+  reportMatch(recognizer: Parser) {
     this.endErrorCondition(recognizer);
-  };
+  }
 }
 
 export function validate(input: string): Error[] {
@@ -127,7 +146,7 @@ export function validate(input: string): Error[] {
   const parser = createParserFromLexer(lexer);
   parser.removeErrorListeners();
   parser.addErrorListener(new CollectorErrorListener(errors));
-  parser._errHandler = new PainlessErrorStrategy();
+  parser.errorHandler = new PainlessErrorStrategy();
 
   // parse the source
   parser.source();
