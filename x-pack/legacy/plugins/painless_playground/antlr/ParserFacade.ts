@@ -20,10 +20,10 @@ import {
 import { PainlessLexer } from './PainlessLexer';
 import { PainlessParser } from './PainlessParser';
 
-class ConsoleErrorListener implements ANTLRErrorListener<Token> {
+class ConsoleErrorListener<TSymbol> implements ANTLRErrorListener<TSymbol> {
   syntaxError(
-    _recognizer: Recognizer<Token, any>,
-    _offendingSymbol: Token | undefined,
+    _recognizer,
+    _offendingSymbol,
     _line: number,
     _charPositionInLine: number,
     msg: string,
@@ -84,7 +84,7 @@ export function createLexer(input: string) {
   return lexer;
 }
 
-export function getTokens(input: string) : Token[] {
+export function getTokens(input: string): Token[] {
   return createLexer(input).getAllTokens();
 }
 
@@ -96,10 +96,10 @@ function createParserFromLexer(lexer: PainlessLexer) {
 export function parseTreeStr(input: string) {
   const lexer = createLexer(input);
   lexer.removeErrorListeners();
-  lexer.addErrorListener(new ConsoleErrorListener());
+  lexer.addErrorListener(new ConsoleErrorListener<number>());
   const parser = createParserFromLexer(lexer);
   parser.removeErrorListeners();
-  parser.addErrorListener(new ConsoleErrorListener());
+  parser.addErrorListener(new ConsoleErrorListener<Token>());
   const tree = parser.source();
   return tree.toStringTree(parser.ruleNames);
 }
